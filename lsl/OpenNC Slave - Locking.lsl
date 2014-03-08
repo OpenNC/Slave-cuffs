@@ -25,7 +25,6 @@
 
 string    g_szModToken    = "llac"; // valid token for this module, TBD need to be read more global
 key g_keyWearer;
-
 // Messages to be received
 string g_szLockCmd="Lock"; // message for setting lock on or off
 string g_szSubOwnerMsg="subowner"; // info on owner
@@ -38,17 +37,14 @@ list lstCuffNames=["Not","chest","skull","lshoulder","rshoulder","lhand","rhand"
 // cuff LM message map
 integer    LM_CUFF_CMD        = -551001;
 integer    LM_CUFF_ANIM    = -551002;
-
 integer g_nLocked=FALSE; // is the cuff locked
 integer g_nUseRLV=FALSE; // should RLV be used
 integer g_nLockedState=FALSE; // state submitted to RLV viewer
 list g_lstSubOwners; // owner of the sub t send information about detaching while locked
 string g_szIllegalDetach="";
 key g_keyFirstOwner;
-
 integer viewercheck = FALSE;//set to TRUE if viewer is has responded to @version message
 integer listener;
-
 float versiontimeout = 30.0;
 integer versionchannel = 293847;
 integer checkcount;//increment this each time we say @version.  check it each time timer goes off in default state. give up if it's >= 2
@@ -97,20 +93,6 @@ integer nGetOwnerChannel(integer nOffset)
         chan -= 30000;
     }
     return chan;
-}
-
-//===============================================================================
-//= parameters   :    string    szMsg   message string received
-//=
-//= return        :    none
-//=
-//= description  :    output debug messages
-//=
-//===============================================================================
-
-Debug(string szMsg)
-{
-    llOwnerSay(llGetScriptName() + ": " + szMsg);
 }
 
 //===============================================================================
@@ -198,7 +180,6 @@ NotifyAllOwners()
 {
     integer i;
     integer m=llGetListLength(g_lstSubOwners);
-
     for (i=0;i<m;i=i+2)
     {
         llInstantMessage(llList2Key(g_lstSubOwners,i), llKey2Name(g_keyWearer) + " has detached me while locked ("+g_szIllegalDetach+")!");
@@ -231,7 +212,6 @@ default
     {
         if (channel == versionchannel)
         {
-            //llOwnerSay("heard " + message);
             llListenRemove(listener);
             llSetTimerEvent(0.0);
             //get the version to send to rlv plugins
@@ -246,11 +226,9 @@ default
     }
 
     link_message(integer nSenderNum, integer nNum, string szMsg, key keyID)
-    {
-        // make sure to check any values comming in for us while we still do the version checking
+    {// make sure to check any values comming in for us while we still do the version checking
         if (nNum == LM_CUFF_CMD)
-        {
-            // any lock command?
+        { // any lock command?
             if (nStartsWith(szMsg,g_szLockCmd))
             {
                 list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
@@ -265,11 +243,9 @@ default
             }
             // or owner message, TBD
             else if (nStartsWith(szMsg,g_szSubOwnerMsg))
-            {
-                // store the subowner for detach warning
+            { // store the subowner for detach warning
                 list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
                 g_lstSubOwners=llParseString2List(llList2String(lstCmdList,1), [","], [""]);
-
                 // now store the first owner for asap notify on detach
                 g_keyFirstOwner=NULL_KEY;
                 integer m=llGetListLength(g_lstSubOwners);
@@ -285,14 +261,12 @@ default
             }
             // or info about RLV to be used
             else if (nStartsWith(szMsg,"rlvon"))
-            {
-                // store the subowner for detach warning
+            {// store the subowner for detach warning
                 g_nUseRLV=TRUE;
             }
             // or info about RLV NOT to be used
             else if (nStartsWith(szMsg,"rlvoff"))
-            {
-                // store the subowner for detach warning
+            { // store the subowner for detach warning
                 g_nUseRLV=FALSE;
             }
         }
@@ -325,25 +299,22 @@ state checked
             NotifyAllOwners();
         }
         if (g_nLockedState)
-            {
-                llOwnerSay("@detach=n");
-            }
+        {
+            llOwnerSay("@detach=n");
+        }
     }
 
     attach(key id)
-    {
-        // notify owner of sub
+    { // notify owner of sub
         if (g_nLocked && id == NULL_KEY)
-        {
-            // notify owner of dettachign, could be spaming, but well, more trouble for the sub *giggles*
+        { // notify owner of dettachign, could be spaming, but well, more trouble for the sub *giggles*
             g_szIllegalDetach=llGetTimestamp();
             if (g_keyFirstOwner!=NULL_KEY) llInstantMessage(g_keyFirstOwner, llKey2Name(g_keyWearer) + " has detached me while locked!");
         }
     }
 
     state_entry()
-    {
-        // request infos from main cuff
+    { // request infos from main cuff
         SendCmd("rlac",g_szInfoRequest,g_keyWearer);
         // and set all now existing lockstates
         SetLocking();
@@ -360,12 +331,10 @@ state checked
                 list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
                 if (llList2String(lstCmdList,1)=="on")
                 {
-                    //llOwnerSay("@detach=n");
                     g_nLocked=TRUE;
                 }
                 else
                 {
-                    //llOwnerSay("@detach=y");
                     g_nLocked=FALSE;
                 }
                 // Update Cuff lock status
@@ -373,8 +342,7 @@ state checked
             }
             else if (nStartsWith(szMsg,g_szSubOwnerMsg))
                 // OWner of sub received for information service
-            {
-                // store the subowner for detach warning
+            { // store the subowner for detach warning
                 list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
                 g_lstSubOwners=llParseString2List(llList2String(lstCmdList,1), [","], [""]);
                 // now store the first owner for asap notify on detach
@@ -392,16 +360,14 @@ state checked
             }
             else if (szMsg=="rlvon")
                 // RLV got activated
-            {
-                // store the subowner for detach warning
+            { // store the subowner for detach warning
                 g_nUseRLV=TRUE;
                 // Update Cuff lock status
                 SetLocking();
             }
             else if (szMsg=="rlvoff")
                 // RLV got deactivated
-            {
-                // store the subowner for detach warning
+            { // store the subowner for detach warning
                 g_nUseRLV=FALSE;
                 // Update Cuff lock status
                 SetLocking();

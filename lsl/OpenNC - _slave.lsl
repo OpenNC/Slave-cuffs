@@ -12,28 +12,20 @@
 integer g_nCmdChannel    = -190890;        // command channel
 integer    g_nCmdHandle    = 0;            // command listen handler
 integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
-
-
 key        g_keyWearer        = NULL_KEY;        // key of the owner/wearer
-
 integer    LM_CUFF_CMD        = -551001;
 integer    LM_CUFF_ANIM    = -551002;
 integer    LM_CUFF_CUFFPOINTNAME = -551003;
-
-integer    g_nDebug        = FALSE;
-integer    g_nShowScript    = FALSE;
 
 list lstCuffNames=["Not","chest","skull","lshoulder","rshoulder","lhand","rhand","lfoot","rfoot","spine","ocbelt","mouth","chin","lear","rear","leye","reye","nose","ruac","rlac","luac","llac","rhip","rulc","rllc","lhip","lulc","lllc","ocbelt","rpec","lpec","HUD Center 2","HUD Top Right","HUD Top","HUD Top Left","HUD Center","HUD Bottom Left","HUD Bottom","HUD Bottom Right"]; // list of attachment point to resolcve the names for the cuffs system, addition cuff chain point will be transamitted via LMs
 // attention, belt is twice in the list, once for stomach. , once for pelvis as there are version for both points
 
 string  g_szAllowedCommadToken = "rlac"; // only accept commands from this token adress
 list    g_lstModTokens    = []; // valid token for this module
-
 integer    CMD_UNKNOWN        = -1;        // unknown command - don't handle
 integer    CMD_CHAT        = 0;        // chat cmd - check what should happen with it
 integer    CMD_EXTERNAL    = 1;        // external cmd - check what should happen with it
 integer    CMD_MODULE        = 2;        // cmd for this module
-
 integer    g_nCmdType        = CMD_UNKNOWN;
 
 //
@@ -43,42 +35,7 @@ integer    g_nCmdType        = CMD_UNKNOWN;
 //
 string    g_szReceiver    = "";
 string    g_szSender        = "";
-
 integer g_nLockGuardChannel = -9119;
-
-
-
-//===============================================================================
-//= parameters   :  string szMsg        output message
-//=                 string szFunc        function name if not ""
-//=                 integer nScript        send scriptname ?
-//=                 integer nChannel    channel to be sent on -1 = llOwnerSay
-//=
-//= description  : Function for debug output.
-//=                If g_nDebug is FALSE = no output is sent
-//=                If g_nShowScript is FALSE = scriptname always shown
-//=
-//===============================================================================
-akDebug(string szMsg, string szFunc, integer nScript, integer nChannel)
-{
-    if ( g_nDebug )
-    {
-        string    szOutput    = "\nDebug Output :\n=============";
-
-        if( szFunc != "" )
-            szOutput += "\nFunction : " + szFunc;
-
-        if ( nScript || g_nShowScript)
-            szOutput += "\nScript : " + llGetScriptName();
-
-        szOutput += "\n" + szMsg + "\n=============";
-
-        if ( nChannel == -1 )
-            llOwnerSay(szOutput);
-        else
-            llWhisper(nChannel, szOutput);
-    }
-}
 
 //===============================================================================
 //= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
@@ -132,7 +89,6 @@ integer IsAllowed( key keyID )
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
     llRegionSay(g_nCmdChannel, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
-    //llWhisper(0, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
 //===============================================================================
 //= parameters   : none
@@ -145,18 +101,12 @@ SendCmd( string szSendTo, string szCmd, key keyID )
 Init()
 {
     g_keyWearer = llGetOwner();
-
     // get unique channel numbers for the command and cuff channel, cuff channel wil be used for LG chains of cuffs as well
     g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
-
     llListenRemove(g_nCmdHandle);
-
     g_nCmdHandle = llListen(g_nCmdChannel + 1, "", NULL_KEY, "");
-
     g_lstModTokens = (list)llList2String(lstCuffNames,llGetAttached()); // get name of the cuff from the attachment point, this is absolutly needed for the system to work, other chain point wil be received via LMs
 
-    //akDebug(llGetScriptName ()+" ready - Memory : " + (string)llGetFreeMemory(), "", FALSE, -1);
-    //llOwnerSay(llGetScriptName ()+" ready - Memory : " + (string)llGetFreeMemory());
 }
 
 //===============================================================================
@@ -254,7 +204,6 @@ ParseSingleCmd( key keyID, string szMsg )
             if ( llGetKey() != keyID )
                 llMessageLinked( LINK_SET, LM_CUFF_CMD, szMsg, llGetKey() );
         }
-        //llWhisper(0, "OC Cuff slave : " + szMsg  );
     }
     else
     {
@@ -288,7 +237,6 @@ default
             {
                 g_lstModTokens+=[szMsg];
             }
-            akDebug(llList2CSV(g_lstModTokens),"",0,0);
         }
     }
 
