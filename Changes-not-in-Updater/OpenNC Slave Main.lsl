@@ -1,27 +1,17 @@
-//Licensed under the GPLv2, with the additional requirement that these scripts remain "full perms" in Second Life.  See "OpenCollar License" for details.
-//Cuff Command Interpreter
-// alotn reused from OpenCollar rlvmain module, see comment below
-
-//=============================================================================
-//== OC Cuff - Color and Texture Parser
-//== receives messages from linkmessages send within the Cuff
-//== annd applies Colora and Texture changes
-//==
-//==
-//== 2009-01-16 Cleo Collins - 1. draft
-//== 2014-01-21 North Glenwalker - Adjustment to detach code as stopped working on so viewers.
-//==
-//=============================================================================
-
-//Licensed under the GPLv2, with the additional requirement that these scripts remain "full perms" in Second Life.  See "OpenCollar License" for details.
-//new viewer checking method, as of 2.73
-//on rez, restart script
-//on script start, query db for rlvon setting
-//on rlvon response, if rlvon=0 then just switch to checked state.  if rlvon=1 or rlvon=unset then open listener, do @version, start 30 second timer
-//on listen, we got version, so stop timer, close listen, turn on rlv flag, and switch to checked state
-//on timer, we haven't heard from viewer yet.  Either user is not running RLV, or else they're logging in and viewer could not respond yet when we asked.
-//so do @version one more time, and wait another 30 seconds.
-//on next timer, give up. User is not running RLV.  Stop timer, close listener, set rlv flag to FALSE, save to db, and switch to checked state.
+﻿////////////////////////////////////////////////////////////////////////////////////
+// ------------------------------------------------------------------------------ //
+//                              OpenNC - Slave Main                               //
+//                                 version 3.960                                  //
+// ------------------------------------------------------------------------------ //
+// Licensed under the GPLv2 with additional requirements specific to Second Life® //
+// and other virtual metaverse environments.                                      //
+// ------------------------------------------------------------------------------ //
+// ©   2008 - 2013  Individual Contributors and OpenCollar - submission set free™ //
+// ©   2013 - 2014  OpenNC                                                        //
+//      Suport for Arms, Legs, Wings, and Tail cuffs and restrictions             //
+// ------------------------------------------------------------------------------ //
+// Not now supported by OpenCollar at all                                         //
+////////////////////////////////////////////////////////////////////////////////////
 
 string    g_szModToken    = "llac"; // valid token for this module, TBD need to be read more global
 key g_keyWearer = NULL_KEY;  // key of the owner/wearer
@@ -33,52 +23,32 @@ string g_szInfoRequest="SendLockInfo"; // request info about RLV and Lock status
 // NOTE: for products other than cuffs this HAS to be change for the OCC names or the your items will interferre with the cuffs
 list lstCuffNames=["Not","chest","skull","lshoulder","rshoulder","lhand","rhand","lfoot","rfoot","spine","ocbelt","mouth","chin","lear","rear","leye","reye","nose","ruac","rlac","luac","llac","rhip","rulc","rllc","lhip","lulc","lllc","ocbelt","rpec","lpec","HUD Center 2","HUD Top Right","HUD Top","HUD Top Left","HUD Center","HUD Bottom Left","HUD Bottom","HUD Bottom Right"];
 
-// cuff LM message map
-integer    LM_CUFF_ANIM    = -551002;
-integer    LM_CUFF_CUFFPOINTNAME = -551003;
 integer g_nLocked=FALSE; // is the cuff locked
 integer g_nUseRLV=FALSE; // should RLV be used
 integer g_nLockedState=FALSE; // state submitted to RLV viewer
 string g_szIllegalDetach="";
 key g_keyFirstOwner;
-integer viewercheck = FALSE;//set to TRUE if viewer is has responded to @versionnew message
 integer listener;
-float versiontimeout = 30.0;
-integer versionchannel = 293847;
-integer checkcount;//increment this each time we say @version.  check it each time timer goes off in default state. give up if it's >= 2
-string rlvString = "RestrainedLife viewer v1.15";
-
-//"checked" state - HANDLING RLV SUBMENUS AND COMMANDS
-//on start, request RLV submenus
-//on rlv submenu response, add to list
-//on main submenu "RLV", bring up this menu
-
 integer g_nCmdChannel    = -190890;
 integer g_nCmdHandle    = 0;            // command listen handler
-integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
-//apperance
-
+integer g_nCmdChannelOffset = 0xCC0CC;  // offset to be used to make sure we do not interfere with other items using the same technique for
+integer LM_CHAIN_CMD = -551001;
+integer LM_CUFF_CUFFPOINTNAME = -551003;
 string g_szColorChangeCmd="ColorChanged";
 string g_szTextureChangeCmd="TextureChanged";
 string g_szHideCmd="HideMe"; // Comand for Cuffs to hide
 integer g_nHidden=FALSE;
-
 list TextureElements;
 list ColorElements;
 list textures;
 list colorsettings;
-
-//end
-
-//_slave
 string  g_szAllowedCommadToken = "rlac"; // only accept commands from this token adress
-list    g_lstModTokens    = []; // valid token for this module
-integer    CMD_UNKNOWN        = -1;        // unknown command - don't handle
-integer    CMD_CHAT        = 0;        // chat cmd - check what should happen with it
-integer    CMD_EXTERNAL    = 1;        // external cmd - check what should happen with it
-integer    CMD_MODULE        = 2;        // cmd for this module
-integer    g_nCmdType        = CMD_UNKNOWN;
-
+list g_lstModTokens = []; // valid token for this module
+integer CMD_UNKNOWN = -1;        // unknown command - don't handle
+integer CMD_CHAT = 0;        // chat cmd - check what should happen with it
+integer CMD_EXTERNAL = 1;        // external cmd - check what should happen with it
+integer CMD_MODULE = 2;        // cmd for this module
+integer g_nCmdType = CMD_UNKNOWN;
 //
 // external command syntax
 // sender prefix|receiver prefix|command1=value1~command2=value2|UUID to send under
@@ -87,8 +57,6 @@ integer    g_nCmdType        = CMD_UNKNOWN;
 string    g_szReceiver    = "";
 string    g_szSender        = "";
 integer g_nLockGuardChannel = -9119;
-//end
-
 //===============================================================================
 //= parameters   :    string    szSendTo    prefix of receiving modul
 //=                    string    szCmd       message string to send
@@ -104,7 +72,6 @@ SendCmd( string szSendTo, string szCmd, key keyID )
 {
     llRegionSay(g_nCmdChannel, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
-
 //===============================================================================
 //= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
 //=
@@ -125,7 +92,6 @@ integer nGetOwnerChannel(integer nOffset)
     }
     return chan;
 }
-
 //===============================================================================
 //= parameters   :    string    szMsg   message string received
 //=
@@ -134,12 +100,10 @@ integer nGetOwnerChannel(integer nOffset)
 //= description  :    checks if a string begin with another string
 //=
 //===============================================================================
-
 integer nStartsWith(string szHaystack, string szNeedle) // http://wiki.secondlife.com/wiki/llSubStringIndex
 {
     return (llDeleteSubString(szHaystack, llStringLength(szNeedle), -1) == szNeedle);
 }
-
 //===============================================================================
 //= parameters   :    none
 //=
@@ -148,7 +112,6 @@ integer nStartsWith(string szHaystack, string szNeedle) // http://wiki.secondlif
 //= description  :    send locking and RLV info to slave cuffs
 //=
 //===============================================================================
-
 SetLocking()
 {
     if (g_nLocked)
@@ -172,27 +135,6 @@ SetLocking()
         llOwnerSay("@detach=y");
     }
 }
-
-//===============================================================================
-//= parameters   :    none
-//=
-//= return        :    none
-//=
-//= description  :    checks if RLV is available
-//=
-//===============================================================================
-
-CheckVersion()
-{
-    //open listener
-    listener = llListen(versionchannel, "", g_keyWearer, "");
-    //start timer
-    llSetTimerEvent(versiontimeout);
-    //do ownersay
-    checkcount++;
-    llOwnerSay("@version=" + (string)versionchannel);
-}
-
 //===============================================================================
 //= parameters   :    none
 //=
@@ -201,14 +143,11 @@ CheckVersion()
 //= description  :    read name of cuff from attachment spot
 //=
 //===============================================================================
-
 string GetCuffName()
 {
     return llList2String(lstCuffNames,llGetAttached());
 }
-
 //apperance
-
 //===============================================================================
 //= parameters   :    string    szStr   String to be stripped
 //=
@@ -217,12 +156,10 @@ string GetCuffName()
 //= description  :    strip the spaces out of a string, needed to as workarounfd in the LM part of OpenCollar - color
 //=
 //===============================================================================
-
 string szStripSpaces (string szStr)
 {
     return llDumpList2String(llParseString2List(szStr, [" "], []), "");
 }
-
 // From OpenNC Texture
 string ElementTextureType(integer linknumber)
 {
@@ -238,7 +175,6 @@ string ElementTextureType(integer linknumber)
         return llList2String(llParseString2List(desc, ["~"], []), 0);
     }
 }
-
 // From OpenNC Color
 string ElementColorType(integer linknumber)
 {
@@ -255,7 +191,6 @@ string ElementColorType(integer linknumber)
         return llList2String(params, 0);
     }
 }
-
 // From OpenNC Texture
 BuildTextureList()
 { //loop through non-root prims, build element list
@@ -271,7 +206,6 @@ BuildTextureList()
         }
     }
 }
-
 // From OpenNC Texture
 SetElementTexture(string element, key tex)
 {
@@ -301,7 +235,6 @@ SetElementTexture(string element, key tex)
         }     
     }
 }
-
 // From OpenNC Colors
 BuildColorElementList()
 {
@@ -317,7 +250,6 @@ BuildColorElementList()
         }
     }    
 }
-
 // From OpenNC Colors
 SetElementColor(string element, vector color)
 {
@@ -347,10 +279,7 @@ SetElementColor(string element, vector color)
         }  
     }
 }
-
 // end of OpenNC parts
-//end
-
 //_slave
 //===============================================================================
 //= parameters   : key keyID - the key to check for permission
@@ -362,14 +291,28 @@ SetElementColor(string element, vector color)
 //===============================================================================
 integer IsAllowed( key keyID )
 {
-    integer nAllow    = FALSE;
+    integer nAllow = FALSE;
 
     if ( llGetOwnerKey(keyID) == g_keyWearer )
         nAllow = TRUE;
 
     return nAllow;
 }
-
+//===============================================================================
+//= parameters   :    string    szSendTo    prefix of receiving modul
+//=                    string    szCmd       message string to send
+//=                    key        keyID        key of the AV or object
+//=
+//= retun        :    none
+//=
+//= description  :    Sends the command with the prefix and the UUID
+//=                    on the command channel
+//=
+//===============================================================================
+SendCmd1( string szSendTo, string szCmd, key keyID )
+{
+    llRegionSay(g_nCmdChannel, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+}
 //===============================================================================
 //= parameters   : none
 //=
@@ -386,8 +329,17 @@ Init()
     llListenRemove(g_nCmdHandle);
     g_nCmdHandle = llListen(g_nCmdChannel + 1, "", NULL_KEY, "");
     g_lstModTokens = (list)llList2String(lstCuffNames,llGetAttached()); // get name of the cuff from the attachment point, this is absolutly needed for the system to work, other chain point wil be received via LMs
-}
+    g_szModToken=GetCuffName();
+    BuildTextureList();
+    BuildColorElementList();
+    // listen to LockGuard requests
+    llListen(g_nLockGuardChannel,"","","");
+    // request infos from main cuff
+    SendCmd("rlac",g_szInfoRequest,g_keyWearer);
+    // and set all now existing lockstates
+    SetLocking();
 
+}
 //===============================================================================
 //= parameters   :    key        keyID    key of the calling AV or object
 //=                   string    szMsg   message string received
@@ -400,8 +352,8 @@ Init()
 //===============================================================================
 string CheckCmd( key keyID, string szMsg )
 {
-    list    lstParsed    = llParseString2List( szMsg, [ "|" ], [] );
-    string    szCmd        = szMsg;
+    list lstParsed = llParseString2List( szMsg, [ "|" ], [] );
+    string szCmd = szMsg;
 
     // first part should be sender token
     // second part the receiver token
@@ -426,11 +378,9 @@ string CheckCmd( key keyID, string szMsg )
             }
         }
     }
-
     lstParsed = [];
     return szCmd;
 }
-
 //===============================================================================
 //= parameters   :    key        keyID    key of the calling AV or object
 //=                   string    szMsg   message string received
@@ -447,15 +397,12 @@ ParseCmdString( key keyID, string szMsg )
     list    lstParsed = llParseString2List( szMsg, [ "~" ], [] );
     integer nCnt = llGetListLength(lstParsed);
     integer i = 0;
-
     for (i = 0; i < nCnt; i++ )
     {
         ParseSingleCmd(keyID, llList2String(lstParsed, i));
     }
-
     lstParsed = [];
 }
-
 //===============================================================================
 //= parameters   :    key        keyID    key of the calling AV or object
 //=                   string    szMsg   single command string
@@ -469,7 +416,6 @@ ParseCmdString( key keyID, string szMsg )
 ParseSingleCmd( key keyID, string szMsg )
 {
     list    lstParsed    = llParseString2List( szMsg, [ "=" ], [] );
-
     string    szCmd    = llList2String(lstParsed,0);
     string    szValue    = llList2String(lstParsed,1);
 
@@ -478,7 +424,8 @@ ParseSingleCmd( key keyID, string szMsg )
         if ( llGetListLength(lstParsed) == 4 )
         {
             if ( llGetKey() != keyID )
-            LM_CUFF_CMD(szMsg, llGetKey() );
+//            LM_CUFF_CMD(szMsg, llGetKey() );
+            llMessageLinked( LINK_SET, LM_CHAIN_CMD, szMsg, llGetKey() );
         }
     }
     else
@@ -490,7 +437,6 @@ ParseSingleCmd( key keyID, string szMsg )
 }
 
 //end
-
 //new
 LM_CUFF_CMD(string szMsg, key id)
 {// message for cuff received;
@@ -555,163 +501,62 @@ default
 {
     on_rez(integer param)
     {
-        llResetScript();
-    }
-    touch_start(integer nCnt)
-    {
-        // call menu from maincuff
-        // Cleo: Added another parameter of clicker to the message
-        SendCmd("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));
-    }
-
-    state_entry()
-    {  // wait for init and start RLV check
-        g_szModToken=GetCuffName();
-        g_keyWearer=llGetOwner();
-        // get unique channel numbers for the command and cuff channel, cuff channel wil be used for LG chains of cuffs as well
-        g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
-        viewercheck = TRUE;
-        SetLocking();
-        BuildTextureList();
-        BuildColorElementList();
-        Init();
-        // listen to LockGuard requests
-        llListen(g_nLockGuardChannel,"","","");
-        state checked;
-    }
-
-    listen(integer channel, string name, key id, string message)
-    {
-        if (channel == versionchannel)
-        {
-            llListenRemove(listener);
-            llSetTimerEvent(0.0);
-            //get the version to send to rlv plugins
-            string rlvVersion = llList2String(llParseString2List(message, [" "], []), 2);
-            list temp = llParseString2List(rlvVersion, ["."], []);
-            string majorV = llList2String(temp, 0);
-            string minorV = llList2String(temp, 1);
-            rlvVersion = llGetSubString(majorV, -1, -1) + llGetSubString(minorV, 0, 1);
-            viewercheck = TRUE;
-            state checked;
-        }
-        string szMsg = llStringTrim(message, STRING_TRIM);
-
-        // commands sent on cmd channel
-        if ( channel == g_nCmdChannel+ 1 )
-        {
-            if ( IsAllowed(id) )
-            {
-                if (llGetSubString(szMsg,0,8)=="lockguard")
-                {
-                    llMessageLinked(LINK_SET, g_nLockGuardChannel, szMsg, id);
-                }
-                else
-                {
-                    // check if external or maybe for this module
-                    string szCmd = CheckCmd( id, szMsg );
-
-                    if ( g_nCmdType == CMD_MODULE )
-                    {
-                        ParseCmdString(id, szCmd);
-                    }
-                }
-            }
-        } 
-        else if ( channel == g_nLockGuardChannel)
-        // LG message received, forward it to the other prims
-        {
-            llMessageLinked(LINK_SET,g_nLockGuardChannel,message,NULL_KEY);
-        }
-    }
-
-    timer()
-    {
-        llListenRemove(listener);
-        llSetTimerEvent(0.0);
-        if (checkcount == 1)
-        {   //the viewer hasn't responded after 30 seconds, but maybe it was still logging in when we did @version
-            //give it one more chance
-            CheckVersion();
-        }
-        else if (checkcount >= 2)
-        {   //we've given the viewer a full 60 seconds
-            viewercheck = FALSE;
-            state checked;
-        }
-    }
-}
-
-state checked
-    // The check for RLV is finished, we are now in normal run state
-{
-    on_rez(integer param)
-    {
         if (g_nLockedState)
         {
             llOwnerSay("@detach=n");
         }
+        llResetScript();
     }
-
-touch_start(integer nCnt)
-    {
-        // call menu from maincuff
+    touch_start(integer nCnt)
+    {   // call menu from maincuff
         // Cleo: Added another parameter of clicker to the message
-        SendCmd("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));
+        SendCmd1("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));
     }
 
     state_entry()
-    { // request infos from main cuff
-        SendCmd("rlac",g_szInfoRequest,g_keyWearer);
-        // and set all now existing lockstates
-        SetLocking();
+    {  
         Init();
-        // listen to LockGuard requests
-        llListen(g_nLockGuardChannel,"","","");
     }
     
-        listen(integer channel, string name, key id, string message)
+    link_message(integer nSenderNum, integer nNum, string szMsg, key keyID)
     {
-        if (channel == versionchannel)
+        if( nNum == LM_CUFF_CUFFPOINTNAME )
         {
-            llListenRemove(listener);
-            llSetTimerEvent(0.0);
-            //get the version to send to rlv plugins
-            string rlvVersion = llList2String(llParseString2List(message, [" "], []), 2);
-            list temp = llParseString2List(rlvVersion, ["."], []);
-            string majorV = llList2String(temp, 0);
-            string minorV = llList2String(temp, 1);
-            rlvVersion = llGetSubString(majorV, -1, -1) + llGetSubString(minorV, 0, 1);
-            viewercheck = TRUE;
-            state checked;
+            if (llListFindList(g_lstModTokens,[szMsg])==-1)
+            {
+                g_lstModTokens+=[szMsg];
+            }
         }
-        string szMsg = llStringTrim(message, STRING_TRIM);
+    }
 
+    listen(integer nChannel, string szName, key keyID, string szMsg)
+    {
+        szMsg = llStringTrim(szMsg, STRING_TRIM);
         // commands sent on cmd channel
-        if ( channel == g_nCmdChannel+ 1 )
+        if ( nChannel == g_nCmdChannel+ 1 )
         {
-            if ( IsAllowed(id) )
+            if ( IsAllowed(keyID) )
             {
                 if (llGetSubString(szMsg,0,8)=="lockguard")
                 {
-                    llMessageLinked(LINK_SET, g_nLockGuardChannel, szMsg, id);
+                    llMessageLinked(LINK_SET, -9119, szMsg, keyID);
                 }
                 else
                 {
                     // check if external or maybe for this module
-                    string szCmd = CheckCmd( id, szMsg );
+                    string szCmd = CheckCmd( keyID, szMsg );
 
                     if ( g_nCmdType == CMD_MODULE )
                     {
-                        ParseCmdString(id, szCmd);
+                        ParseCmdString(keyID, szCmd);
                     }
                 }
             }
         } 
-        else if ( channel == g_nLockGuardChannel)
+        else if ( nChannel == g_nLockGuardChannel)
         // LG message received, forward it to the other prims
         {
-            llMessageLinked(LINK_SET,g_nLockGuardChannel,message,NULL_KEY);
+            llMessageLinked(LINK_SET,g_nLockGuardChannel,szMsg,NULL_KEY);
         }
     }
 }
