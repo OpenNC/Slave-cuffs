@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - Slave Main                               //
 //                                 version 3.960                                  //
@@ -31,9 +31,10 @@ key g_keyFirstOwner;
 integer listener;
 integer g_nCmdChannel    = -190890;
 integer g_nCmdHandle    = 0;            // command listen handler
-integer g_nCmdChannelOffset = 0xCC0CC;  // offset to be used to make sure we do not interfere with other items using the same technique for
+integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
 integer LM_CHAIN_CMD = -551001;
 integer LM_CUFF_CUFFPOINTNAME = -551003;
+//apperance
 string g_szColorChangeCmd="ColorChanged";
 string g_szTextureChangeCmd="TextureChanged";
 string g_szHideCmd="HideMe"; // Comand for Cuffs to hide
@@ -42,13 +43,15 @@ list TextureElements;
 list ColorElements;
 list textures;
 list colorsettings;
+//end
+//_slave
 string  g_szAllowedCommadToken = "rlac"; // only accept commands from this token adress
-list g_lstModTokens = []; // valid token for this module
-integer CMD_UNKNOWN = -1;        // unknown command - don't handle
-integer CMD_CHAT = 0;        // chat cmd - check what should happen with it
-integer CMD_EXTERNAL = 1;        // external cmd - check what should happen with it
-integer CMD_MODULE = 2;        // cmd for this module
-integer g_nCmdType = CMD_UNKNOWN;
+list    g_lstModTokens    = []; // valid token for this module
+integer    CMD_UNKNOWN        = -1;        // unknown command - don't handle
+integer    CMD_CHAT        = 0;        // chat cmd - check what should happen with it
+integer    CMD_EXTERNAL    = 1;        // external cmd - check what should happen with it
+integer    CMD_MODULE        = 2;        // cmd for this module
+integer    g_nCmdType        = CMD_UNKNOWN;
 //
 // external command syntax
 // sender prefix|receiver prefix|command1=value1~command2=value2|UUID to send under
@@ -57,6 +60,7 @@ integer g_nCmdType = CMD_UNKNOWN;
 string    g_szReceiver    = "";
 string    g_szSender        = "";
 integer g_nLockGuardChannel = -9119;
+//end
 //===============================================================================
 //= parameters   :    string    szSendTo    prefix of receiving modul
 //=                    string    szCmd       message string to send
@@ -280,6 +284,7 @@ SetElementColor(string element, vector color)
     }
 }
 // end of OpenNC parts
+//end
 //_slave
 //===============================================================================
 //= parameters   : key keyID - the key to check for permission
@@ -418,15 +423,13 @@ ParseSingleCmd( key keyID, string szMsg )
     list    lstParsed    = llParseString2List( szMsg, [ "=" ], [] );
     string    szCmd    = llList2String(lstParsed,0);
     string    szValue    = llList2String(lstParsed,1);
-
     if ( szCmd == "chain" )
     {
-        if ( llGetListLength(lstParsed) == 4 )
+        if (( llGetListLength(lstParsed) == 4 )||( llGetListLength(lstParsed) == 7 ))
         {
             if ( llGetKey() != keyID )
-//            LM_CUFF_CMD(szMsg, llGetKey() );
             llMessageLinked( LINK_SET, LM_CHAIN_CMD, szMsg, llGetKey() );
-        }
+      }
     }
     else
     {
@@ -545,7 +548,6 @@ default
                 {
                     // check if external or maybe for this module
                     string szCmd = CheckCmd( keyID, szMsg );
-
                     if ( g_nCmdType == CMD_MODULE )
                     {
                         ParseCmdString(keyID, szCmd);
