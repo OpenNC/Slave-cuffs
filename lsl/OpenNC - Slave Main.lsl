@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - Slave Main                               //
-//                                 version 3.960                                  //
+//                                 version 3.961                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -43,6 +43,8 @@ list TextureElements;
 list ColorElements;
 list textures;
 list colorsettings;
+list g_lAlphaSettings;
+string g_sIgnore = "nohide";
 //end
 //_slave
 string  g_szAllowedCommadToken = "rlac"; // only accept commands from this token adress
@@ -489,27 +491,79 @@ LM_CUFF_CMD(string szMsg, key id)
         g_nHidden= llList2Integer(lstCmdList,1);
         if (g_nHidden)
         {
-            llSetLinkAlpha(LINK_SET,0.0,ALL_SIDES);
+            SetAllElementsAlpha (0.0);
+//            llSetLinkAlpha(LINK_SET,0.0,ALL_SIDES);
         }
         else
         {
-            llSetLinkAlpha(LINK_SET,1.0,ALL_SIDES);
+            SetAllElementsAlpha (1.0);
+//            llSetLinkAlpha(LINK_SET,1.0,ALL_SIDES);
         }
     }
     //end
 }
 //end
+SetAllElementsAlpha(float fAlpha)
+{//loop through links, setting color if element type matches what we're changing
+    //root prim is 1, so start at 2
+    integer n;
+    integer iLinkCount = llGetNumberOfPrims();
+    string sAlpha = Float2String(fAlpha);
+    for (n = 2; n <= iLinkCount; n++)
+    {
+        string sElement = ElementType(n);
+            llSetLinkAlpha(n, fAlpha, ALL_SIDES);
+            //update element in list of settings
+            integer iIndex = llListFindList(g_lAlphaSettings, [sElement]);
+            if (iIndex == -1)
+            {
+                g_lAlphaSettings += [sElement, sAlpha];
+            }
+            else
+            {
+                g_lAlphaSettings = llListReplaceList(g_lAlphaSettings, [sAlpha], iIndex + 1, iIndex + 1);
+            }
+    }
+}
+string Float2String(float in)
+{
+    string out = (string)in;
+    integer i = llSubStringIndex(out, ".");
+    while (~i && llStringLength(llGetSubString(out, i + 2, -1)) && llGetSubString(out, -1, -1) == "0")
+    {
+        out = llGetSubString(out, 0, -2);
+    }
+    return out;
+}
+string ElementType(integer linkiNumber)
+{
+    string sDesc = (string)llGetObjectDetails(llGetLinkKey(linkiNumber), [OBJECT_DESC]);
+    //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to  not appear in the color or texture menus
+    list lParams = llParseString2List(sDesc, ["~"], []);
+    if ((~(integer)llListFindList(lParams, [g_sIgnore])) || sDesc == "" || sDesc == " " || sDesc == "(No Description)")
+    {
+        return g_sIgnore;
+    }
+    else
+    {
+        return llList2String(lParams, 0);
+    }
+}
 
 default
 {
     on_rez(integer param)
     {
-        if (g_nLockedState)
+        if (g_keyWearer == llGetOwner())
         {
-            llOwnerSay("@detach=n");
+            if (g_nLockedState)
+            {
+                llOwnerSay("@detach=n");
+            }       
         }
-        llResetScript();
+        else llResetScript();
     }
+    
     touch_start(integer nCnt)
     {   // call menu from maincuff
         // Cleo: Added another parameter of clicker to the message
