@@ -63,28 +63,96 @@ string    g_szReceiver    = "";
 string    g_szSender        = "";
 integer g_nLockGuardChannel = -9119;
 //end
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
+
+//size adust
+float MIN_DIMENSION=0.001; // the minimum scale of a prim allowed, in any dimension
+float MAX_DIMENSION=1.0; // the maximum scale of a prim allowed, in any dimension
+float max_scale;
+float min_scale;
+float   cur_scale = 1.0;
+integer handle;
+integer menuChan;
+float min_original_scale=10.0; // minimum x/y/z component of the scales in the linkset
+float max_original_scale=0.0; // minimum x/y/z component of the scales in the linkset
+list link_scales = [];
+list link_positions = [];
+ 
+makeMenu()
+{
+    llDialog(llGetOwner(),"Max scale: "+(string)max_scale+"\nMin scale: "+(string)min_scale+"\n \nCurrent scale: "+
+        (string)cur_scale,["-0.01","-0.05","MIN  SIZE","+0.01","+0.05","MAX  SIZE","-0.10","-0.25","RESTORE","+0.10","+0.25"],menuChan);
+}
+ 
+integer scanLinkset()
+{
+    integer link_qty = llGetNumberOfPrims();
+    integer link_idx;
+    vector link_pos;
+    vector link_scale;
+    //script made specifically for linksets, not for single prims
+    if (link_qty > 1)
+    {
+        //link numbering in linksets starts with 1
+        for (link_idx=1; link_idx <= link_qty; link_idx++)
+        {
+            link_pos=llList2Vector(llGetLinkPrimitiveParams(link_idx,[PRIM_POSITION]),0);
+            link_scale=llList2Vector(llGetLinkPrimitiveParams(link_idx,[PRIM_SIZE]),0);
+            // determine the minimum and maximum prim scales in the linkset,
+            // so that rescaling doesn't fail due to prim scale limitations
+            if(link_scale.x<min_original_scale) min_original_scale=link_scale.x;
+            else if(link_scale.x>max_original_scale) max_original_scale=link_scale.x;
+            if(link_scale.y<min_original_scale) min_original_scale=link_scale.y;
+            else if(link_scale.y>max_original_scale) max_original_scale=link_scale.y;
+            if(link_scale.z<min_original_scale) min_original_scale=link_scale.z;
+            else if(link_scale.z>max_original_scale) max_original_scale=link_scale.z;
+            link_scales    += [link_scale];
+            link_positions += [(link_pos-llGetRootPosition())/llGetRootRotation()];
+        }
+    }
+    else
+    {
+        llOwnerSay("error: this script doesn't work for non-linked objects");
+        return FALSE;
+    }
+    max_scale = MAX_DIMENSION/max_original_scale;
+    min_scale = MIN_DIMENSION/min_original_scale;
+    return TRUE;
+}
+ 
+resizeObject(float scale)
+{
+    integer link_qty = llGetNumberOfPrims();
+    integer link_idx;
+    vector new_size;
+    vector new_pos;
+    if (link_qty > 1)
+    {
+        //link numbering in linksets starts with 1
+        for (link_idx=1; link_idx <= link_qty; link_idx++)
+        {
+            new_size   = scale * llList2Vector(link_scales, link_idx-1);
+            new_pos    = scale * llList2Vector(link_positions, link_idx-1);
+ 
+            if (link_idx == 1)
+            {
+                //because we don't really want to move the root prim as it moves the whole object
+                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size]);
+            }
+            else
+            {
+                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size, PRIM_POSITION, new_pos]);
+            }
+        }
+    }
+}
+//end of size adjust
+
+
 SendCmd( string szSendTo, string szCmd, key keyID )
 {
     llRegionSay(g_nCmdChannel, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
-//===============================================================================
-//= parameters   :  integer nOffset        Offset to make sure we use really a unique channel
-//=
-//= description  : Function which calculates a unique channel number based on the owner key, to reduce lag
-//=
-//= returns      : Channel number to be used
-//===============================================================================
+
 integer nGetOwnerChannel(integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)g_keyWearer,3,8)) + g_nCmdChannelOffset;
@@ -98,26 +166,12 @@ integer nGetOwnerChannel(integer nOffset)
     }
     return chan;
 }
-//===============================================================================
-//= parameters   :    string    szMsg   message string received
-//=
-//= return        :    integer TRUE/FALSE
-//=
-//= description  :    checks if a string begin with another string
-//=
-//===============================================================================
+
 integer nStartsWith(string szHaystack, string szNeedle) // http://wiki.secondlife.com/wiki/llSubStringIndex
 {
     return (llDeleteSubString(szHaystack, llStringLength(szNeedle), -1) == szNeedle);
 }
-//===============================================================================
-//= parameters   :    none
-//=
-//= return        :    none
-//=
-//= description  :    send locking and RLV info to slave cuffs
-//=
-//===============================================================================
+
 SetLocking()
 {
     if (g_nLocked)
@@ -141,27 +195,13 @@ SetLocking()
         llOwnerSay("@detach=y");
     }
 }
-//===============================================================================
-//= parameters   :    none
-//=
-//= return        :    string    szMsg   message string received
-//=
-//= description  :    read name of cuff from attachment spot
-//=
-//===============================================================================
+
 string GetCuffName()
 {
     return llList2String(lstCuffNames,llGetAttached());
 }
 //apperance
-//===============================================================================
-//= parameters   :    string    szStr   String to be stripped
-//=
-//= return        :    string stStr without spaces
-//=
-//= description  :    strip the spaces out of a string, needed to as workarounfd in the LM part of OpenCollar - color
-//=
-//===============================================================================
+
 string szStripSpaces (string szStr)
 {
     return llDumpList2String(llParseString2List(szStr, [" "], []), "");
@@ -288,14 +328,7 @@ SetElementColor(string element, vector color)
 // end of OpenNC parts
 //end
 //_slave
-//===============================================================================
-//= parameters   : key keyID - the key to check for permission
-//=
-//= retun        : TRUE if permission is granted
-//=
-//= description  : checks if the key is allowed to send command to this modul
-//=
-//===============================================================================
+
 integer IsAllowed( key keyID )
 {
     integer nAllow = FALSE;
@@ -305,29 +338,12 @@ integer IsAllowed( key keyID )
 
     return nAllow;
 }
-//===============================================================================
-//= parameters   :    string    szSendTo    prefix of receiving modul
-//=                    string    szCmd       message string to send
-//=                    key        keyID        key of the AV or object
-//=
-//= retun        :    none
-//=
-//= description  :    Sends the command with the prefix and the UUID
-//=                    on the command channel
-//=
-//===============================================================================
+
 SendCmd1( string szSendTo, string szCmd, key keyID )
 {
     llRegionSay(g_nCmdChannel, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
-//===============================================================================
-//= parameters   : none
-//=
-//= retun        : none
-//=
-//= description  : get owner/wearer key and opens the listeners (std channel + 1)
-//=
-//===============================================================================
+
 Init()
 {
     g_keyWearer = llGetOwner();
@@ -345,23 +361,17 @@ Init()
     SendCmd("rlac",g_szInfoRequest,g_keyWearer);
     // and set all now existing lockstates
     SetLocking();
+    //resize
+    llListenRemove(handle);
+    menuChan = 50000 + (integer)llFrand(50000.00);
+    handle = llListen(menuChan,"",llGetOwner(),"");
 
 }
-//===============================================================================
-//= parameters   :    key        keyID    key of the calling AV or object
-//=                   string    szMsg   message string received
-//=
-//= retun        :    string    command without prefixes if it has to be handled here
-//=
-//= description  :    checks if the message includes a valid ext. prefix
-//=                    and if it's for this module
-//=
-//===============================================================================
+
 string CheckCmd( key keyID, string szMsg )
 {
     list lstParsed = llParseString2List( szMsg, [ "|" ], [] );
     string szCmd = szMsg;
-
     // first part should be sender token
     // second part the receiver token
     // third part = command
@@ -388,17 +398,7 @@ string CheckCmd( key keyID, string szMsg )
     lstParsed = [];
     return szCmd;
 }
-//===============================================================================
-//= parameters   :    key        keyID    key of the calling AV or object
-//=                   string    szMsg   message string received
-//=
-//= retun        :
-//=
-//= description  :    devides the command string into single commands
-//=                    delimiter = ~
-//=                    single commands are redirected to ParseSingleCmd
-//=
-//===============================================================================
+
 ParseCmdString( key keyID, string szMsg )
 {
     list    lstParsed = llParseString2List( szMsg, [ "~" ], [] );
@@ -410,16 +410,7 @@ ParseCmdString( key keyID, string szMsg )
     }
     lstParsed = [];
 }
-//===============================================================================
-//= parameters   :    key        keyID    key of the calling AV or object
-//=                   string    szMsg   single command string
-//=
-//= retun        :
-//=
-//= description  :    devides the command string into command & parameter
-//=                    delimiter is =
-//=
-//===============================================================================
+
 ParseSingleCmd( key keyID, string szMsg )
 {
     list    lstParsed    = llParseString2List( szMsg, [ "=" ], [] );
@@ -492,12 +483,10 @@ LM_CUFF_CMD(string szMsg, key id)
         if (g_nHidden)
         {
             SetAllElementsAlpha (0.0);
-//            llSetLinkAlpha(LINK_SET,0.0,ALL_SIDES);
         }
         else
         {
             SetAllElementsAlpha (1.0);
-//            llSetLinkAlpha(LINK_SET,1.0,ALL_SIDES);
         }
     }
     //end
@@ -565,13 +554,18 @@ default
     }
     
     touch_start(integer nCnt)
-    {   // call menu from maincuff
-        // Cleo: Added another parameter of clicker to the message
-        SendCmd1("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));
+    {
+        if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
+        {
+            llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
+        }
+        else { SendCmd1("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));}
     }
 
     state_entry()
-    {  
+    {
+        if (scanLinkset()) { // llOwnerSay("resizer script ready");
+        }
         Init();
     }
     
@@ -599,8 +593,7 @@ default
                     llMessageLinked(LINK_SET, -9119, szMsg, keyID);
                 }
                 else
-                {
-                    // check if external or maybe for this module
+                { // check if external or maybe for this module
                     string szCmd = CheckCmd( keyID, szMsg );
                     if ( g_nCmdType == CMD_MODULE )
                     {
@@ -610,9 +603,49 @@ default
             }
         } 
         else if ( nChannel == g_nLockGuardChannel)
-        // LG message received, forward it to the other prims
-        {
+        {// LG message received, forward it to the other prims
             llMessageLinked(LINK_SET,g_nLockGuardChannel,szMsg,NULL_KEY);
+        }
+        else if (keyID == llGetOwner())
+        {
+            if (szMsg == "Cuff Menu")
+            {
+                SendCmd1("rlac", "cmenu=on="+(string)keyID, keyID);
+            }
+            else if (szMsg == "Resizer")
+            {
+                makeMenu();
+            }
+            else
+            {
+                if (szMsg == "RESTORE")
+                {
+                    cur_scale = 1.0;
+                }
+                else if (szMsg == "MIN SIZE")
+                {
+                    cur_scale = min_scale;
+                }
+                else if (szMsg == "MAX SIZE")
+                {
+                    cur_scale = max_scale;
+                }          
+                else
+                {
+                    cur_scale += (float)szMsg;
+                }
+                //check that the scale doesn't go beyond the bounds
+                if (cur_scale > max_scale)
+                { 
+                    cur_scale = max_scale;
+                }
+                if (cur_scale < min_scale)
+                {
+                    cur_scale = min_scale;
+                }
+                resizeObject(cur_scale);
+                makeMenu();
+            }
         }
     }
 }
