@@ -111,7 +111,7 @@ integer scanLinkset()
     }
     else
     {
-        llOwnerSay("error: this script doesn't work for non-linked objects");
+//        llOwnerSay("error: this script doesn't work for non-linked objects");
         return FALSE;
     }
     max_scale = MAX_DIMENSION/max_original_scale;
@@ -543,10 +543,17 @@ default
 {
     on_rez(integer param)
     {
+        if (llGetAttached() == 0) // If not attached then
+        {
+            llResetScript();
+            return;
+        }
+        
         if (g_keyWearer == llGetOwner())
         {
             if (g_nLockedState)
             {
+                Init();// we keep loosing who we are so main cuff won't hear us
                 llOwnerSay("@detach=n");
             }       
         }
@@ -555,6 +562,13 @@ default
     
     touch_start(integer nCnt)
     {
+        key id = llDetectedKey(0);
+        if ((llGetAttached() == 0)&& (id==g_keyWearer)) // If not attached then wake up update script then do nothing
+        {
+            llSetScriptState("OpenNC - update",TRUE);
+            return;
+        }
+        
         if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
         {
             llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
