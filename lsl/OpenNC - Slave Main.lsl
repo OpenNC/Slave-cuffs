@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - Slave Main                               //
-//                                 version 3.961                                  //
+//                                 version 3.968                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -148,9 +148,14 @@ resizeObject(float scale)
 //end of size adjust
 
 
-SendCmd( string szSendTo, string szCmd, key keyID )
+SendCmd( string szSendTo, string szCmd, key keyID ) //this is not the same format as SendCmd1
 {
     llRegionSay(g_nCmdChannel, g_szModToken + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
+}
+
+SendCmd1( string szSendTo, string szCmd, key keyID )
+{
+    llRegionSay(g_nCmdChannel, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
 }
 
 integer nGetOwnerChannel(integer nOffset)
@@ -221,22 +226,7 @@ string ElementTextureType(integer linknumber)
         return llList2String(llParseString2List(desc, ["~"], []), 0);
     }
 }
-// From OpenNC Color
-string ElementColorType(integer linknumber)
-{
-    string desc = (string)llGetObjectDetails(llGetLinkKey(linknumber), [OBJECT_DESC]);
-    //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to 
-    //not appear in the color or texture menus
-    list params = llParseString2List(desc, ["~"], []);
-    if (~llListFindList(params, ["nocolor"]) || desc == "" || desc == " " || desc == "(No Description)")
-    {
-        return "nocolor";
-    }
-    else
-    {
-        return llList2String(params, 0);
-    }
-}
+
 // From OpenNC Texture
 BuildTextureList()
 { //loop through non-root prims, build element list
@@ -252,7 +242,7 @@ BuildTextureList()
         }
     }
 }
-// From OpenNC Texture
+
 SetElementTexture(string element, key tex)
 {
     integer i=llListFindList(textures,[element]);
@@ -282,6 +272,22 @@ SetElementTexture(string element, key tex)
     }
 }
 // From OpenNC Colors
+string ElementColorType(integer linknumber)
+{
+    string desc = (string)llGetObjectDetails(llGetLinkKey(linknumber), [OBJECT_DESC]);
+    //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to 
+    //not appear in the color or texture menus
+    list params = llParseString2List(desc, ["~"], []);
+    if (~llListFindList(params, ["nocolor"]) || desc == "" || desc == " " || desc == "(No Description)")
+    {
+        return "nocolor";
+    }
+    else
+    {
+        return llList2String(params, 0);
+    }
+}
+
 BuildColorElementList()
 {
     integer n;
@@ -337,35 +343,6 @@ integer IsAllowed( key keyID )
         nAllow = TRUE;
 
     return nAllow;
-}
-
-SendCmd1( string szSendTo, string szCmd, key keyID )
-{
-    llRegionSay(g_nCmdChannel, llList2String(g_lstModTokens,0) + "|" + szSendTo + "|" + szCmd + "|" + (string)keyID);
-}
-
-Init()
-{
-    g_keyWearer = llGetOwner();
-    // get unique channel numbers for the command and cuff channel, cuff channel wil be used for LG chains of cuffs as well
-    g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
-    llListenRemove(g_nCmdHandle);
-    g_nCmdHandle = llListen(g_nCmdChannel + 1, "", NULL_KEY, "");
-    g_lstModTokens = (list)llList2String(lstCuffNames,llGetAttached()); // get name of the cuff from the attachment point, this is absolutly needed for the system to work, other chain point wil be received via LMs
-    g_szModToken=GetCuffName();
-    BuildTextureList();
-    BuildColorElementList();
-    // listen to LockGuard requests
-    llListen(g_nLockGuardChannel,"","","");
-    // request infos from main cuff
-    SendCmd("rlac",g_szInfoRequest,g_keyWearer);
-    // and set all now existing lockstates
-    SetLocking();
-    //resize
-    llListenRemove(handle);
-    menuChan = 50000 + (integer)llFrand(50000.00);
-    handle = llListen(menuChan,"",llGetOwner(),"");
-
 }
 
 string CheckCmd( key keyID, string szMsg )
@@ -539,8 +516,35 @@ string ElementType(integer linkiNumber)
     }
 }
 
+Init()
+{
+    g_keyWearer = llGetOwner();
+    // get unique channel numbers for the command and cuff channel, cuff channel wil be used for LG chains of cuffs as well
+    g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
+    llListenRemove(g_nCmdHandle);
+    g_nCmdHandle = llListen(g_nCmdChannel + 1, "", NULL_KEY, "");
+    llOwnerSay("line 525 my channel is "+ (string)g_nCmdChannel);
+    g_lstModTokens = (list)llList2String(lstCuffNames,llGetAttached()); // get name of the cuff from the attachment point, this is absolutly needed for the system to work, other chain point wil be received via LMs
+    g_szModToken=GetCuffName();
+    BuildTextureList(); //build list of parts we can texture
+    BuildColorElementList(); //built list of parts we can color
+    // listen to LockGuard requests
+    llListen(g_nLockGuardChannel,"","","");
+    SendCmd("rlac",g_szInfoRequest,g_keyWearer); // request infos from main cuff
+    SetLocking(); // and set all existing lockstates now
+    //resize
+    llListenRemove(handle);
+    menuChan = 50000 + (integer)llFrand(50000.00);
+    handle = llListen(menuChan,"",llGetOwner(),"");
+}
+
 default
 {
+        state_entry()
+    {
+        Init();
+    }
+    
     on_rez(integer param)
     {
         if (llGetAttached() == 0) // If not attached then
@@ -551,9 +555,9 @@ default
         
         if (g_keyWearer == llGetOwner())
         {
+            Init();// we keep loosing who we are so main cuff won't hear us
             if (g_nLockedState)
             {
-                Init();// we keep loosing who we are so main cuff won't hear us
                 llOwnerSay("@detach=n");
             }       
         }
@@ -573,14 +577,8 @@ default
         {
             llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
         }
+        // else just ask for main cuff menu
         else { SendCmd1("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));}
-    }
-
-    state_entry()
-    {
-        if (scanLinkset()) { // llOwnerSay("resizer script ready");
-        }
-        Init();
     }
     
     link_message(integer nSenderNum, integer nNum, string szMsg, key keyID)
