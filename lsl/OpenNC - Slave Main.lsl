@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // ------------------------------------------------------------------------------ //
 //                              OpenNC - Slave Main                               //
-//                                 version 3.968                                  //
+//                                 version 3.980                                  //
 // ------------------------------------------------------------------------------ //
 // Licensed under the GPLv2 with additional requirements specific to Second Life® //
 // and other virtual metaverse environments.                                      //
@@ -34,7 +34,7 @@ integer g_nCmdHandle    = 0;            // command listen handler
 integer g_nCmdChannelOffset = 0xCC0CC;       // offset to be used to make sure we do not interfere with other items using the same technique for
 integer LM_CHAIN_CMD = -551001;
 integer LM_CUFF_CUFFPOINTNAME = -551003;
-//apperance
+
 string g_szColorChangeCmd="ColorChanged";
 string g_szTextureChangeCmd="TextureChanged";
 string g_szHideCmd="HideMe"; // Comand for Cuffs to hide
@@ -45,8 +45,7 @@ list textures;
 list colorsettings;
 list g_lAlphaSettings;
 string g_sIgnore = "nohide";
-//end
-//_slave
+
 string  g_szAllowedCommadToken = "rlac"; // only accept commands from this token adress
 list    g_lstModTokens    = []; // valid token for this module
 integer    CMD_UNKNOWN        = -1;        // unknown command - don't handle
@@ -62,7 +61,6 @@ integer    g_nCmdType        = CMD_UNKNOWN;
 string    g_szReceiver    = "";
 string    g_szSender        = "";
 integer g_nLockGuardChannel = -9119;
-//end
 
 //size adust
 float MIN_DIMENSION=0.001; // the minimum scale of a prim allowed, in any dimension
@@ -110,10 +108,7 @@ integer scanLinkset()
         }
     }
     else
-    {
-//        llOwnerSay("error: this script doesn't work for non-linked objects");
-        return FALSE;
-    }
+        return FALSE;// llOwnerSay("error: this script doesn't work for non-linked objects");
     max_scale = MAX_DIMENSION/max_original_scale;
     min_scale = MIN_DIMENSION/min_original_scale;
     return TRUE;
@@ -134,19 +129,13 @@ resizeObject(float scale)
             new_pos    = scale * llList2Vector(link_positions, link_idx-1);
  
             if (link_idx == 1)
-            {
-                //because we don't really want to move the root prim as it moves the whole object
-                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size]);
-            }
+                llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size]);//because we don't really want to move the root prim as it moves the whole object
             else
-            {
                 llSetLinkPrimitiveParamsFast(link_idx, [PRIM_SIZE, new_size, PRIM_POSITION, new_pos]);
-            }
         }
     }
 }
 //end of size adjust
-
 
 SendCmd( string szSendTo, string szCmd, key keyID ) //this is not the same format as SendCmd1
 {
@@ -162,13 +151,9 @@ integer nGetOwnerChannel(integer nOffset)
 {
     integer chan = (integer)("0x"+llGetSubString((string)g_keyWearer,3,8)) + g_nCmdChannelOffset;
     if (chan>0)
-    {
         chan=chan*(-1);
-    }
     if (chan > -10000)
-    {
         chan -= 30000;
-    }
     return chan;
 }
 
@@ -187,16 +172,12 @@ SetLocking()
             llOwnerSay("@detach=n");
         }
         else if (g_nLockedState && !g_nUseRLV)
-        {
             llOwnerSay("@detach=y");
-        }
     }
     else
     {
         if (g_nLockedState)
-        {
             g_nLockedState=FALSE;
-        }
         llOwnerSay("@detach=y");
     }
 }
@@ -205,29 +186,23 @@ string GetCuffName()
 {
     return llList2String(lstCuffNames,llGetAttached());
 }
-//apperance
 
 string szStripSpaces (string szStr)
 {
     return llDumpList2String(llParseString2List(szStr, [" "], []), "");
 }
-// From OpenNC Texture
+
 string ElementTextureType(integer linknumber)
 {
     string desc = (string)llGetObjectDetails(llGetLinkKey(linknumber), [OBJECT_DESC]);
     //prim desc will be elementtype~notexture(maybe)
     list params = llParseString2List(desc, ["~"], []);
     if (~llListFindList(params, ["notexture"]) || desc == "" || desc == " " || desc == "(No Description)")
-    {
         return "notexture";
-    }
     else
-    {
         return llList2String(llParseString2List(desc, ["~"], []), 0);
-    }
 }
 
-// From OpenNC Texture
 BuildTextureList()
 { //loop through non-root prims, build element list
     integer n;
@@ -237,9 +212,7 @@ BuildTextureList()
     {
         string element = ElementTextureType(n);
         if (!(~llListFindList(TextureElements, [element])) && element != "notexture")
-        {
             TextureElements += [element];
-        }
     }
 }
 
@@ -254,24 +227,18 @@ SetElementTexture(string element, key tex)
         {
             string thiselement = ElementTextureType(n);
             if (thiselement == element)
-            { //set link to new texture
-                llSetLinkTexture(n, tex, ALL_SIDES);
-            }
+                llSetLinkTexture(n, tex, ALL_SIDES); //set link to new texture
         }
         //change the textures list entry for the current element
         integer index;
         index = llListFindList(textures, [element]);
         if (index == -1)
-        {
             textures += [element, tex];
-        }
         else
-        {
             textures = llListReplaceList(textures, [tex], index + 1, index + 1);
-        }     
     }
 }
-// From OpenNC Colors
+
 string ElementColorType(integer linknumber)
 {
     string desc = (string)llGetObjectDetails(llGetLinkKey(linknumber), [OBJECT_DESC]);
@@ -279,13 +246,9 @@ string ElementColorType(integer linknumber)
     //not appear in the color or texture menus
     list params = llParseString2List(desc, ["~"], []);
     if (~llListFindList(params, ["nocolor"]) || desc == "" || desc == " " || desc == "(No Description)")
-    {
         return "nocolor";
-    }
     else
-    {
         return llList2String(params, 0);
-    }
 }
 
 BuildColorElementList()
@@ -297,12 +260,10 @@ BuildColorElementList()
     {
         string element = ElementColorType(n);
         if (!(~llListFindList(ColorElements, [element])) && element != "nocolor")
-        {
             ColorElements += [element];
-        }
-    }    
+    }
 }
-// From OpenNC Colors
+
 SetElementColor(string element, vector color)
 {
     integer i=llListFindList(colorsettings,[element]);
@@ -314,26 +275,16 @@ SetElementColor(string element, vector color)
         {
             string thiselement = ElementColorType(n);
             if (thiselement == element)
-            { //set link to new color
-                //llSetLinkPrimitiveParams(n, [PRIM_COLOR, ALL_SIDES, color, 1.0]);
-                llSetLinkColor(n, color, ALL_SIDES);
-            }
-        }            
+                llSetLinkColor(n, color, ALL_SIDES);//set link to new color
+        }
         //change the colorsettings list entry for the current element
         integer index = llListFindList(colorsettings, [element]);
         if (index == -1)
-        {
             colorsettings += [element, color];
-        }
         else
-        {
             colorsettings = llListReplaceList(colorsettings, [color], index + 1, index + 1);
-        }  
     }
 }
-// end of OpenNC parts
-//end
-//_slave
 
 integer IsAllowed( key keyID )
 {
@@ -341,7 +292,6 @@ integer IsAllowed( key keyID )
 
     if ( llGetOwnerKey(keyID) == g_keyWearer )
         nAllow = TRUE;
-
     return nAllow;
 }
 
@@ -357,14 +307,11 @@ string CheckCmd( key keyID, string szMsg )
         // check the sender of the command occ,rwc,...
         g_szSender = llList2String(lstParsed,0);
         g_nCmdType = CMD_UNKNOWN;
-
         if ( g_szSender==g_szAllowedCommadToken ) // only accept command from the master cuff
         {
             g_nCmdType = CMD_EXTERNAL;
-            // cap and store the receiver
-            g_szReceiver = llList2String(lstParsed,1);
-            // we are the receiver
-            if ( (llListFindList(g_lstModTokens,[g_szReceiver]) != -1) || g_szReceiver == "*" )
+            g_szReceiver = llList2String(lstParsed,1);// cap and store the receiver
+            if ( (llListFindList(g_lstModTokens,[g_szReceiver]) != -1) || g_szReceiver == "*" )// we are the receiver
             {
                 // set cmd return to the rest of the command string
                 szCmd = llList2String(lstParsed,2);
@@ -382,9 +329,7 @@ ParseCmdString( key keyID, string szMsg )
     integer nCnt = llGetListLength(lstParsed);
     integer i = 0;
     for (i = 0; i < nCnt; i++ )
-    {
         ParseSingleCmd(keyID, llList2String(lstParsed, i));
-    }
     lstParsed = [];
 }
 
@@ -402,15 +347,10 @@ ParseSingleCmd( key keyID, string szMsg )
       }
     }
     else
-    {
         LM_CUFF_CMD(szMsg, keyID);
-    }
-
     lstParsed = [];
 }
 
-//end
-//new
 LM_CUFF_CMD(string szMsg, key id)
 {// message for cuff received;
     // or info about RLV to be used
@@ -418,27 +358,21 @@ LM_CUFF_CMD(string szMsg, key id)
     {// it is a lock commans
         list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
         if (llList2String(lstCmdList,1)=="on")
-        {
             g_nLocked=TRUE;
-        }
         else
-        {
             g_nLocked=FALSE;
-        }
         // Update Cuff lock status
         SetLocking();
     }
     else if (szMsg == "rlvon")
     {// RLV got activated
         g_nUseRLV=TRUE;
-        // Update Cuff lock status
-        SetLocking();
+        SetLocking();// Update Cuff lock status
     }
     else if (szMsg == "rlvoff")
     {// RLV got deactivated
         g_nUseRLV=FALSE;
-        // Update Cuff lock status
-        SetLocking();
+        SetLocking();// Update Cuff lock status
     }
     //apperance
     else if (nStartsWith(szMsg,g_szColorChangeCmd))
@@ -458,17 +392,12 @@ LM_CUFF_CMD(string szMsg, key id)
         list lstCmdList    = llParseString2List( szMsg, [ "=" ], [] );
         g_nHidden= llList2Integer(lstCmdList,1);
         if (g_nHidden)
-        {
             SetAllElementsAlpha (0.0);
-        }
         else
-        {
             SetAllElementsAlpha (1.0);
-        }
     }
-    //end
 }
-//end
+
 SetAllElementsAlpha(float fAlpha)
 {//loop through links, setting color if element type matches what we're changing
     //root prim is 1, so start at 2
@@ -478,17 +407,13 @@ SetAllElementsAlpha(float fAlpha)
     for (n = 2; n <= iLinkCount; n++)
     {
         string sElement = ElementType(n);
-            llSetLinkAlpha(n, fAlpha, ALL_SIDES);
-            //update element in list of settings
-            integer iIndex = llListFindList(g_lAlphaSettings, [sElement]);
-            if (iIndex == -1)
-            {
-                g_lAlphaSettings += [sElement, sAlpha];
-            }
-            else
-            {
-                g_lAlphaSettings = llListReplaceList(g_lAlphaSettings, [sAlpha], iIndex + 1, iIndex + 1);
-            }
+        llSetLinkAlpha(n, fAlpha, ALL_SIDES);
+        //update element in list of settings
+        integer iIndex = llListFindList(g_lAlphaSettings, [sElement]);
+        if (iIndex == -1)
+            g_lAlphaSettings += [sElement, sAlpha];
+        else
+            g_lAlphaSettings = llListReplaceList(g_lAlphaSettings, [sAlpha], iIndex + 1, iIndex + 1);
     }
 }
 string Float2String(float in)
@@ -496,9 +421,7 @@ string Float2String(float in)
     string out = (string)in;
     integer i = llSubStringIndex(out, ".");
     while (~i && llStringLength(llGetSubString(out, i + 2, -1)) && llGetSubString(out, -1, -1) == "0")
-    {
         out = llGetSubString(out, 0, -2);
-    }
     return out;
 }
 string ElementType(integer linkiNumber)
@@ -507,13 +430,9 @@ string ElementType(integer linkiNumber)
     //each prim should have <elementname> in its description, plus "nocolor" or "notexture", if you want the prim to  not appear in the color or texture menus
     list lParams = llParseString2List(sDesc, ["~"], []);
     if ((~(integer)llListFindList(lParams, [g_sIgnore])) || sDesc == "" || sDesc == " " || sDesc == "(No Description)")
-    {
         return g_sIgnore;
-    }
     else
-    {
         return llList2String(lParams, 0);
-    }
 }
 
 Init()
@@ -523,7 +442,6 @@ Init()
     g_nCmdChannel = nGetOwnerChannel(g_nCmdChannelOffset);
     llListenRemove(g_nCmdHandle);
     g_nCmdHandle = llListen(g_nCmdChannel + 1, "", NULL_KEY, "");
-    llOwnerSay("line 525 my channel is "+ (string)g_nCmdChannel);
     g_lstModTokens = (list)llList2String(lstCuffNames,llGetAttached()); // get name of the cuff from the attachment point, this is absolutly needed for the system to work, other chain point wil be received via LMs
     g_szModToken=GetCuffName();
     BuildTextureList(); //build list of parts we can texture
@@ -540,11 +458,14 @@ Init()
 
 default
 {
-        state_entry()
+    state_entry()
     {
         Init();
+        if (scanLinkset())
+        { // llOwnerSay("resizer script ready");
+        }
     }
-    
+
     on_rez(integer param)
     {
         if (llGetAttached() == 0) // If not attached then
@@ -557,13 +478,11 @@ default
         {
             Init();// we keep loosing who we are so main cuff won't hear us
             if (g_nLockedState)
-            {
                 llOwnerSay("@detach=n");
-            }       
         }
         else llResetScript();
     }
-    
+
     touch_start(integer nCnt)
     {
         key id = llDetectedKey(0);
@@ -572,23 +491,18 @@ default
             llSetScriptState("OpenNC - update",TRUE);
             return;
         }
-        
         if (llDetectedKey(0) == llGetOwner())// if we are wearer then allow to resize
-        {
             llDialog(llGetOwner(),"Select if you want to Resize this item or the main Cuff Menu ",["Resizer","Cuff Menu"],menuChan);
-        }
         // else just ask for main cuff menu
         else { SendCmd1("rlac", "cmenu=on="+(string)llDetectedKey(0), llDetectedKey(0));}
     }
-    
+
     link_message(integer nSenderNum, integer nNum, string szMsg, key keyID)
     {
         if( nNum == LM_CUFF_CUFFPOINTNAME )
         {
             if (llListFindList(g_lstModTokens,[szMsg])==-1)
-            {
                 g_lstModTokens+=[szMsg];
-            }
         }
     }
 
@@ -601,60 +515,38 @@ default
             if ( IsAllowed(keyID) )
             {
                 if (llGetSubString(szMsg,0,8)=="lockguard")
-                {
                     llMessageLinked(LINK_SET, -9119, szMsg, keyID);
-                }
                 else
                 { // check if external or maybe for this module
                     string szCmd = CheckCmd( keyID, szMsg );
                     if ( g_nCmdType == CMD_MODULE )
-                    {
                         ParseCmdString(keyID, szCmd);
-                    }
                 }
             }
         } 
-        else if ( nChannel == g_nLockGuardChannel)
-        {// LG message received, forward it to the other prims
+        else if ( nChannel == g_nLockGuardChannel)// LG message received, forward it to the other prims
             llMessageLinked(LINK_SET,g_nLockGuardChannel,szMsg,NULL_KEY);
-        }
         else if (keyID == llGetOwner())
         {
             if (szMsg == "Cuff Menu")
-            {
                 SendCmd1("rlac", "cmenu=on="+(string)keyID, keyID);
-            }
             else if (szMsg == "Resizer")
-            {
                 makeMenu();
-            }
             else
             {
                 if (szMsg == "RESTORE")
-                {
                     cur_scale = 1.0;
-                }
                 else if (szMsg == "MIN SIZE")
-                {
                     cur_scale = min_scale;
-                }
                 else if (szMsg == "MAX SIZE")
-                {
                     cur_scale = max_scale;
-                }          
                 else
-                {
                     cur_scale += (float)szMsg;
-                }
                 //check that the scale doesn't go beyond the bounds
                 if (cur_scale > max_scale)
-                { 
                     cur_scale = max_scale;
-                }
                 if (cur_scale < min_scale)
-                {
                     cur_scale = min_scale;
-                }
                 resizeObject(cur_scale);
                 makeMenu();
             }
